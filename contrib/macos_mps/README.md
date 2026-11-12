@@ -193,3 +193,59 @@ pwsh -File contrib/macos_mps/finalize_compare_win.ps1
   （`Validation Loss:` / `Best model saved to:`），且不能因为 grep 没命中就让
   `set -euo pipefail` 把整个脚本打断。
 - `finalize_compare_win.ps1` 逐个文件 scp，缺哪个就告警哪个，别让一个 glob 失败带崩整段。
+
+### 无人值守收尾（训练跑完自动出结果）
+
+`com.unicorn.kronos-finalize` 这个 launchd agent 让整条收尾链路**完全在 Mac 上自包含**，
+Windows 关机不影响结果产出：
+
+```
+launchd  ──ssh 127.0.0.1──▶  ~/.local/bin/kronos-finalize.sh
+                                  │
+                                  ├─ 等 kronos_queue.sh 结束（BTC→ETH→XAUT）
+                                  ├─ parse_ft_logs.py   → finetune/runs/ft_logs.json
+                                  ├─ compare_all.py     → compare_ft_*_1D_ft.json + compare_all.{json,md}
+                                  ├─ make_ft_report.py  → forecast/FT_REPORT.md
+                                  └─ 汇总              → forecast/out/compare/（Windows 一键拉取）
+```
+
+为什么必须绕 ssh：launchd 的后台会话直接读外置盘会被 macOS TCC 拒绝
+（`/Volumes/...: Operation not permitted`），ssh 登录会话才有权限。
+
+安装 / 重装：
+
+```bash
+bash contrib/macos_mps/setup_finalize.sh
+# 等价于：
+cp contrib/macos_mps/kronos-finalize.sh ~/.local/bin/ && chmod +x ~/.local/bin/kronos-finalize.sh
+cp contrib/macos_mps/com.unicorn.kronos-finalize.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.unicorn.kronos-finalize.plist
+```
+
+日志：`~/Library/Logs/kronos-finalize.log`（结束时会打 `FINALIZE_DONE`）。
+
+Windows 回来后一条命令收尾：
+
+```powershell
+pwsh -File contrib/forecast/finalize_all.ps1          # 拉产物 + 出图 + 出报告
+pwsh -File contrib/forecast/finalize_all.ps1 -Notion  # 再加上归档到 Notion
+```
+
+### Mac 侧脚本索引
+
+| 脚本 | 作用 |
+| --- | --- |
+| `mps_device.py` | 设备选择：`$KRONOS_DEVICE` > cuda > mps > cpu |
+| `patch_finetune_csv.py` | 把 finetune_csv 复制成 MPS 版本并改 device / pin_memory |
+| `patch_config_loader.py` | 把单一 batch_size 拆成 tokenizer / basemodel 两个 |
+| `patch_dataset_split.py` | 修 `_split_data_by_time` 的 val 段过短 bug |
+| `mps_probe.py` / `mps_probe2.py` | MPS 算子与显存上限探针 |
+| `kronos_queue.sh` | BTC → ETH → XAUT 串行训练队列 |
+| `check_progress.sh` | 进度 / ETA（配合 `eta.py`） |
+| `kronos-finalize.sh` | 训练结束后自动收尾（本文） |
+| `setup_finalize.sh` | 安装上面的 launchd agent |
+| `finalize_compare_mac.sh` | 手动收尾：日志解析 + 走查回测 + 汇总 |
+| `finalize_compare_win.ps1` | 手动从 Windows 侧收尾 |
+| `finalize_all.ps1` | Windows 一键收尾（拉产物 + 出图 + 出报告 + Notion） |
+| `validate_artifacts.py` | 校验微调产物与预训练 config 一致、可 from_pretrained |
+| `preflight_datasets.py` | 训练前预检 train/val 切分是否合法 |

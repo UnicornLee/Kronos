@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.unicorn.kronos-finalize</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/ssh</string>
+    <string>-i</string>
+    <string>/Users/unicorn/.ssh/id_ed25519_kronos</string>
+    <string>-o</string>
+    <string>BatchMode=yes</string>
+    <string>-o</string>
+    <string>StrictHostKeyChecking=accept-new</string>
+    <string>-o</string>
+    <string>UserKnownHostsFile=/Users/unicorn/.ssh/known_hosts</string>
+    <string>-o</string>
+    <string>ConnectTimeout=15</string>
+    <string>-o</string>
+    <string>ServerAliveInterval=30</string>
+    <string>unicorn@127.0.0.1</string>
+    <string>/Users/unicorn/.local/bin/kronos-finalize.sh</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/unicorn/Library/Logs/kronos-finalize.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/unicorn/Library/Logs/kronos-finalize.err.log</string>
+</dict>
+</plist>

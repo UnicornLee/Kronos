@@ -48,4 +48,10 @@ echo
 echo "=== 汇总文件 ==="
 ls -la "$FT"/compare_all.* 2>/dev/null || true
 ls -la "$FT"/compare_ft_*_1D_ft.json 2>/dev/null || true
+echo "=== 解析训练日志（三个资产 → ft_logs.json） ==="
+"$PY" "$FC/parse_ft_logs.py" btc_1d_base eth_1d_base xaut_1d_base || echo "!! 日志解析失败"
+echo
+
+echo "=== 汇总文件 ==="
+ls -la "$FT"/ft_logs.json 2>/dev/null || true
 echo "DONE"
