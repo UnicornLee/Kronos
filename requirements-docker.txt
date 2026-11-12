@@ -1,0 +1,12 @@
+# Kronos runtime deps for the container (linux/arm64).
+# torch is installed separately in the Dockerfile from the CPU-only index
+# (torch==2.9.1+cpu) — see Dockerfile.
+numpy>=1.26,<2
+pandas==2.2.2
+einops==0.8.1
+huggingface_hub==0.33.1
+safetensors==0.6.2
+tqdm==4.67.1
+flask==2.3.3
+flask-cors==4.0.0
+plotly==5.17.0

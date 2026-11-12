@@ -1,0 +1,12 @@
+.git
+.gitignore
+__pycache__
+**/__pycache__
+*.pyc
+*.png
+figures
+examples/yuce
+finetune_csv/data
+finetune_csv/examples
+webui/prediction_results
+deploy-notes

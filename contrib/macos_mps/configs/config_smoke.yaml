@@ -1,0 +1,63 @@
+# 冒烟测试配置：BTC 日线 / base，各跑 1 个 epoch，验证 MPS 训练全链路
+# 用法：
+#   cd /Volumes/ssd990pro1t/kronos/finetune/finetune_csv_mps
+#   KRONOS_DEVICE=mps /Volumes/ssd990pro1t/kronos/native-venv/bin/python \
+#     train_sequential.py --config ../configs/config_smoke.yaml
+
+data:
+  data_path: "/Volumes/ssd990pro1t/kronos/forecast/data/BTC_1D.csv"
+  lookback_window: 512
+  predict_window: 7
+  max_context: 512
+  clip: 5.0
+  train_ratio: 0.9
+  val_ratio: 0.1
+  test_ratio: 0.0
+
+training:
+  tokenizer_epochs: 1
+  basemodel_epochs: 1
+  batch_size: 8
+  tokenizer_batch_size: 16
+  basemodel_batch_size: 8
+  log_interval: 20
+  num_workers: 2
+  seed: 42
+
+  tokenizer_learning_rate: 0.0002
+  predictor_learning_rate: 0.00001
+
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  adam_weight_decay: 0.1
+
+  accumulation_steps: 1
+
+model_paths:
+  pretrained_tokenizer: "/Volumes/ssd990pro1t/kronos/hf-cache/hub/models--NeoQuasar--Kronos-Tokenizer-base/snapshots/0e0117387f39004a9016484a186a908917e22426"
+  pretrained_predictor: "/Volumes/ssd990pro1t/kronos/hf-cache/hub/models--NeoQuasar--Kronos-base/snapshots/2b554741eca47781b64468546e77fef3e85130e6"
+
+  exp_name: "smoke_btc_1d"
+  base_path: "/Volumes/ssd990pro1t/kronos/finetune/runs"
+
+  base_save_path: ""
+  finetuned_tokenizer: ""
+
+  tokenizer_save_name: "tokenizer"
+  basemodel_save_name: "basemodel"
+
+experiment:
+  name: "kronos_smoke_test"
+  description: "1-epoch smoke test on MPS"
+  use_comet: false
+  train_tokenizer: true
+  train_basemodel: true
+  skip_existing: false
+
+device:
+  use_cuda: false
+  device_id: 0
+
+distributed:
+  use_ddp: false
+  backend: "gloo"
