@@ -16,6 +16,13 @@ D:\DSH\kronos-forecast\
 │  ├─ calibrate.py           用回测偏差校正预测方向
 │  ├─ make_charts.py         出图（matplotlib，Windows 侧）
 │  ├─ make_report.py         生成 REPORT.md
+│  ├─ make_viz_data.py       精简数据集（viz_data.json）
+│  ├─ compare_ft.py          走查回测（预训练 vs 微调，单资产：MAPE + 方向命中）
+│  ├─ compare_all.py         三资产批量走查 + 汇总 compare_all.json/md
+│  ├─ make_compare_charts.py 微调对比图（MAPE / 命中 / 逐窗 / 差值）
+│  ├─ parse_ft_logs.py       训练日志 → ft_logs.json（每轮 val loss / 耗时 / 产物）
+│  ├─ make_ft_report.py      生成 FT_REPORT.md（训练过程 + 走查 + 结论 + 复现）
+│  ├─ preflight_datasets.py  训练前预检：train/val 切分能否出样本
 │  └─ run_all.sh             Mac 侧一键刷新（抓数 + 预测 + 可选回测）
 ├─ data\                     6 份 OHLCV CSV（从 Mac 同步）
 ├─ out\                      预测 JSON/CSV、回测 JSON、日志
@@ -50,6 +57,25 @@ $py = 'C:\Users\unico\.dsh\dsh-runtimes\dsh-next-primary-runtime\dependencies\py
   固定种子多次独立调用 `predict(sample_count=1)` 再取分位数（脚本里已这么做）。
 - **WebUI 不适合出未来一周**：`/api/predict` 是「拿前 N 根预测后 M 根」并与已有数据对照，
   适合看回测效果；真正的未来一周必须自己构造未来的时间戳，脚本已实现。
+
+## 微调效果评估（compare_* 系列）
+
+预训练模型和微调模型跑**同一批样本外窗口**，比 close MAPE 与终点方向命中率：
+
+```bash
+# Mac：单个资产
+python compare_ft.py --symbol BTC --samples 16 --windows 8
+# Mac：三个资产 + 汇总
+python compare_all.py --symbols BTC ETH XAUT --samples 16 --windows 8
+```
+
+口径：lookback 512 → 预测 7 根日线；窗口按每 21 天一个往前推，
+全部落在训练期之后的验证区内；每窗 16 条采样路径取中位数。
+
+结果文件：`/Volumes/ssd990pro1t/kronos/finetune/runs/compare_ft_<SYM>_1D_ft.json`
+（`_ft` 后缀是必须的：macOS 文件系统大小写不敏感，`1D`/`1d` 会撞名导致资产被跳过）。
+汇总：`compare_all.json` / `compare_all.md`。
+Windows 侧出图与报告见 `contrib/macos_mps/finalize_compare_win.ps1`。
 
 ## 图形界面（可选）
 

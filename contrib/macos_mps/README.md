@@ -94,7 +94,8 @@ basemodel 299 步/epoch × 1.85 s ≈ 9.2 min  train loss 2.2182 / val loss 2.45
 | **微调 1 epoch** | **2.725%** | **6/8 = 75%** |
 
 > 8 个窗口样本很小，方向性参考而非统计结论。脚本：`/Volumes/ssd990pro1t/kronos/forecast/scripts/compare_ft.py`
-> 结果：`/Volumes/ssd990pro1t/kronos/finetune/runs/compare_ft_btc_1d.json`
+> 结果：`/Volumes/ssd990pro1t/kronos/finetune/runs/compare_ft_btc_1d_smoke1ep.json`
+> （正式结果统一用 `compare_ft_<SYM>_1D_ft.json`，见 §10 的文件名约定）
 
 ## 7. 正式训练
 
@@ -139,3 +140,56 @@ tokenizer_lr 2e-4 / predictor_lr 1e-5 / train:val = 9:1。
 6. 训练完推理要用**微调后的 tokenizer + 微调后的 predictor 配对**，混用预训练 tokenizer 会掉点。
 7. Docker 容器内跑不了 MPS（Docker Desktop 不透传 Metal），微调只能在原生 venv 里做。
 8. `pretrained_tokenizer` / `pretrained_predictor` 要填**本地 snapshot 绝对路径**（离线可用）。
+
+## 10. 队列与收尾全链路
+
+从「排三个资产的队」到「出结论」，一条链上的脚本：
+
+| 阶段 | 脚本 | 位置 | 作用 |
+|---|---|---|---|
+| 生成配置 | `gen_queue_configs.py` | contrib/macos_mps | 按资产生成 YAML（BTC/ETH/XAUT） |
+| 排队训练 | `kronos_queue.sh` | contrib/macos_mps | 等上一个跑完再跑下一个，日志写 `runs/<sym>_1d_base.log` |
+| 看进度 | `check_progress.sh` | contrib/macos_mps | 一次看完队列日志、当前 epoch、产物、ETA、负载 |
+| 估剩余时间 | `eta.py` | contrib/macos_mps | 解析日志算每轮耗时 → 剩余轮数/剩余时长/预计完成时刻 |
+| 训练前预检 | `preflight_datasets.py` | contrib/forecast | 校验三资产 train/val 切分能出样本（不加载模型） |
+| 产物体检 | `validate_artifacts.py` | contrib/macos_mps | 校验微调产物能 `from_pretrained`、参数量一致、能出预测 |
+| 走查回测 | `compare_ft.py` | contrib/forecast | 单资产：预训练 vs 微调，8 个样本外窗口，出 MAPE / 方向命中 |
+| 批量走查 | `compare_all.py` | contrib/forecast | 跑三个资产并汇总成 `compare_all.json` + `compare_all.md` |
+| 收尾（Mac） | `finalize_compare_mac.sh` | contrib/macos_mps | 队列结束后一键：产物清单 + loss 摘要 + 走查 + 汇总 |
+| 收尾（Win） | `finalize_compare_win.ps1` | contrib/macos_mps | 拉回 JSON → 出对比图 → 生成 `FT_REPORT.md` |
+| 日志解析 | `parse_ft_logs.py` | contrib/forecast | 训练日志 → `ft_logs.json`（每轮 val loss / 耗时 / 产物路径） |
+| 出图 | `make_compare_charts.py` | contrib/forecast | MAPE / 命中 / 逐窗 / 差值 四张图 |
+| 出报告 | `make_ft_report.py` | contrib/forecast | `FT_REPORT.md`：训练过程 + 走查回测 + 逐窗明细 + 结论 + 复现 |
+
+### 用法
+
+```bash
+# Mac：训练前先预检数据集
+/Volumes/ssd990pro1t/kronos/native-venv/bin/python contrib/forecast/preflight_datasets.py
+
+# Mac：排队（脚本已在跑时不要改它，bash 会因文件偏移错乱而执行出错）
+cd /Volumes/ssd990pro1t/kronos/finetune/finetune_csv_mps
+nohup bash contrib/macos_mps/kronos_queue.sh > /dev/null 2>&1 &
+
+# Mac：随时看进度
+bash contrib/macos_mps/check_progress.sh
+
+# Mac：训练全部结束后一键收尾
+bash contrib/macos_mps/finalize_compare_mac.sh
+
+# Windows：拉结果 + 出图 + 出报告
+pwsh -File contrib/macos_mps/finalize_compare_win.ps1
+```
+
+### 文件名约定（踩过的坑）
+
+- 走查结果统一叫 `compare_ft_<SYM>_1D_ft.json`。
+  **macOS 文件系统大小写不敏感**：`compare_ft_btc_1D_ft.json` 会和 `compare_ft_btc_1d_ft.json`
+  撞成同一个文件，`compare_all.py` 的「已存在就跳过」会直接把某个资产整个跳过。
+  所以固定用 `_ft` 后缀区分，旧结果改名成 `compare_ft_btc_1d_smoke1ep.json` 之类。
+- `eta.py` 认阶段：切换阶段时必须清掉上一阶段的 `last_epoch`，且只接受
+  `1 <= N <= 该阶段总轮数` 的 Summary 块，否则会把 tokenizer 的 Summary 误配给 basemodel。
+- `finalize_compare_mac.sh` 里的 grep 必须匹配日志真实格式
+  （`Validation Loss:` / `Best model saved to:`），且不能因为 grep 没命中就让
+  `set -euo pipefail` 把整个脚本打断。
+- `finalize_compare_win.ps1` 逐个文件 scp，缺哪个就告警哪个，别让一个 glob 失败带崩整段。
