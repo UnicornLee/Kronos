@@ -96,8 +96,9 @@ def table(header, rows):
 
 def build():
     logs = json.load(open(os.path.join(CMP_DIR, "ft_logs.json"), encoding="utf-8"))
-    cmp_all = json.load(open(os.path.join(CMP_DIR, "compare_all.json"), encoding="utf-8"))
-    assets = cmp_all.get("assets", cmp_all)
+    cmp_path = os.path.join(CMP_DIR, "compare_all.json")
+    cmp_all = json.load(open(cmp_path, encoding="utf-8")) if os.path.exists(cmp_path) else None
+    assets = (cmp_all or {}).get("assets", {}) or {}
     B = []
 
     B.append(divider())
@@ -156,6 +157,9 @@ def build():
         B.append(table(["资产", "阶段", "轮数", "首轮 val loss", "末轮 val loss",
                         "最优 val loss", "平均每轮耗时"], rows))
 
+    if not cmp_all:
+        B.append(para("（走查回测与最终对比结论待训练队列结束后由 Mac 侧 watcher 自动产出，届时以「五（续）」章节补上。）"))
+        return B
     B.append(h2("5.4 样本外走查回测（预训练 vs 微调）"))
     B.append(para("口径：模型 kronos-base，lookback 512 → 预测 7 根日线；"
                   f"{cmp_all.get('windows', 8)} 个走查窗口（每 21 天一窗），"
