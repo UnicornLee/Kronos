@@ -8,11 +8,16 @@ Write-Host '=== 拉取走查结果 ==='
 scp 'mac:/Volumes/ssd990pro1t/kronos/finetune/runs/compare_ft_*_1D_ft.json' "$out\"
 scp 'mac:/Volumes/ssd990pro1t/kronos/finetune/runs/compare_all.json' "$out\"
 scp 'mac:/Volumes/ssd990pro1t/kronos/finetune/runs/compare_all.md' "$out\"
+scp 'mac:/Volumes/ssd990pro1t/kronos/finetune/runs/ft_logs.json' "$out\"
 Get-ChildItem $out | Select-Object Name, Length
 
 Write-Host ''
 Write-Host '=== 出图 ==='
 & $py 'D:\DSH\kronos-forecast\scripts\make_compare_charts.py' $out 'D:\DSH\kronos-forecast\charts\compare'
+
+Write-Host ''
+Write-Host '=== 出报告 ==='
+& $py 'D:\DSH\kronos-forecast\scripts\make_ft_report.py' $out 'D:\DSH\kronos-forecast\FT_REPORT.md'
 
 Write-Host ''
 Write-Host '=== 汇总表 ==='

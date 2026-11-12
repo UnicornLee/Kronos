@@ -50,7 +50,7 @@ def main():
     a = parse_args()
     sym = a.symbol.upper()
     ft_dir = a.ft_dir or f"{ROOT}/finetune/runs/{sym.lower()}_1d_base"
-    out_path = a.out or f"{ROOT}/finetune/runs/compare_ft_{sym.lower()}_{a.timeframe}.json"
+    out_path = a.out or f"{ROOT}/finetune/runs/compare_ft_{sym.lower()}_{a.timeframe}_ft.json"
 
     df = pd.read_csv(f"{ROOT}/forecast/data/{sym}_{a.timeframe}.csv")
     df["timestamps"] = pd.to_datetime(df["timestamps"])
