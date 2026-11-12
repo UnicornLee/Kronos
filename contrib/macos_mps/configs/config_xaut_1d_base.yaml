@@ -1,0 +1,64 @@
+# Kronos 微调配置 —— XAUT 日线 / base 模型（Mac mini M4, MPS）
+# 用法：
+#   cd /Volumes/ssd990pro1t/kronos/finetune/finetune_csv_mps
+#   KRONOS_DEVICE=mps /Volumes/ssd990pro1t/kronos/native-venv/bin/python \
+#     train_sequential.py --config ../configs/config_xaut_1d_base.yaml
+
+data:
+  data_path: "/Volumes/ssd990pro1t/kronos/forecast/data/XAUT_1D.csv"
+  lookback_window: 512        # 512 根日线历史
+  predict_window: 7           # 预测未来 7 根日线（一周）
+  max_context: 512
+  clip: 5.0
+  train_ratio: 0.9
+  val_ratio: 0.1
+  test_ratio: 0.0
+
+training:
+  tokenizer_epochs: 30
+  basemodel_epochs: 20
+  batch_size: 8               # 通用默认
+  tokenizer_batch_size: 16    # MPS 上 tokenizer 可用 32
+  basemodel_batch_size: 8     # MPS 显存/内存上限：base 在 B=16 时 OOM
+  log_interval: 50
+  num_workers: 2
+  seed: 42
+
+  tokenizer_learning_rate: 0.0002
+  predictor_learning_rate: 0.00001
+
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  adam_weight_decay: 0.1
+
+  accumulation_steps: 1
+
+model_paths:
+  pretrained_tokenizer: "/Volumes/ssd990pro1t/kronos/hf-cache/hub/models--NeoQuasar--Kronos-Tokenizer-base/snapshots/0e0117387f39004a9016484a186a908917e22426"
+  pretrained_predictor: "/Volumes/ssd990pro1t/kronos/hf-cache/hub/models--NeoQuasar--Kronos-base/snapshots/2b554741eca47781b64468546e77fef3e85130e6"
+
+  exp_name: "xaut_1d_base"
+  base_path: "/Volumes/ssd990pro1t/kronos/finetune/runs"
+
+  base_save_path: ""
+  finetuned_tokenizer: ""
+
+  tokenizer_save_name: "tokenizer"
+  basemodel_save_name: "basemodel"
+
+experiment:
+  name: "kronos_xaut_1d_finetune"
+  description: "XAUT 1D fine-tune on OKX spot history (2022-07-18 .. 2026-11-10), 1577 rows"
+  use_comet: false
+  train_tokenizer: true
+  train_basemodel: true
+  skip_existing: false
+
+device:
+  use_cuda: false
+  device_id: 0
+
+distributed:
+  use_ddp: false
+  backend: "gloo"
+
