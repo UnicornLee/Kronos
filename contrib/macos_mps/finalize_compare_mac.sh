@@ -8,7 +8,7 @@ FC=$ROOT/forecast/scripts
 FT=$ROOT/finetune/runs
 
 echo "=== 队列状态 ==="
-cat "$FT/queue.log"
+cat "$FT/queue.log" || true
 echo
 echo "=== 三个模型的产物 ==="
 for n in btc eth xaut; do
@@ -36,14 +36,16 @@ for n in btc eth xaut; do
   L="$FT/${n}_1d_base.log"
   [ -f "$L" ] || continue
   echo "--- ${n}_1d_base ---"
-  grep -E "Summary" "$L" | tail -2
-  grep -E "Train Loss|Val Loss|train_loss|val_loss" "$L" | tail -4
+  # 日志真实格式: "Validation Loss: x" / "Best model saved to: ... (validation loss: x)"
+  grep -E "Summary" "$L" | tail -2 || true
+  grep -E "Validation Loss|Best model saved" "$L" | tail -6 || true
 done
 echo
 
 echo "=== 走查回测（BTC/ETH/XAUT，16 采样 × 8 窗口） ==="
-"$PY" "$FC/compare_all.py" --symbols BTC ETH XAUT --samples 16 --windows 8
+"$PY" "$FC/compare_all.py" --symbols BTC ETH XAUT --samples 16 --windows 8 || echo "!! 走查失败，请看上面的报错"
 echo
 echo "=== 汇总文件 ==="
-ls -la "$FT"/compare_all.* "$FT"/compare_ft_*_1D_ft.json 2>/dev/null
+ls -la "$FT"/compare_all.* 2>/dev/null || true
+ls -la "$FT"/compare_ft_*_1D_ft.json 2>/dev/null || true
 echo "DONE"
