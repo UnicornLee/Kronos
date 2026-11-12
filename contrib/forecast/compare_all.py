@@ -47,6 +47,11 @@ def fmt(v, n=3):
     return "n/a" if v is None else f"{v:.{n}f}"
 
 
+def pct(v, n=1):
+    """hit_rate is a 0..1 fraction in the json -> render as a percentage."""
+    return "n/a" if v is None else f"{v * 100:.{n}f}%"
+
+
 def main():
     a = parse_args()
     results = {}
@@ -86,7 +91,7 @@ def main():
         pre, ft, dl = r["pretrained"], r["finetuned"], r["delta"]
         lines.append(
             f"| {sym} | {fmt(pre['mape_mean'])} | {fmt(ft['mape_mean'])} | "
-            f"{fmt(dl['mape_mean'])} | {fmt(pre['hit_rate'], 3)} | {fmt(ft['hit_rate'], 3)} | "
+            f"{fmt(dl['mape_mean'])} | {pct(pre['hit_rate'])} | {pct(ft['hit_rate'])} | "
             f"{fmt(pre['day_direction_mean'], 1)} | {fmt(ft['day_direction_mean'], 1)} |")
     table = "\n".join(lines)
     print("\n" + table)
